@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Madeby North | Studio</title>
+    <style>
+        /* --- RESET & LAYOUT --- */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        .background-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- INSTRUCTION TEXT --- */
+        #instruction {
+            position: absolute;
+            top: 20%; 
+            width: 100%;
+            text-align: center;
+            z-index: 5;
+            font-size: 13px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #777;
+            pointer-events: none; 
+            transition: opacity 0.5s ease;
+        }
+
+        /* --- CONTENT LAYER (Under the Fog) --- */
+        .content {
+            position: absolute;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100%;
+            width: 100%;
+        }
+
+        .logo {
+            width: 300px;
+            max-width: 80vw;
+            margin-bottom: 60px;
+            -webkit-user-drag: none;
+            user-select: none;
+        }
+
+        /* Premium Pill Button */
+        .enter-btn {
+            background: transparent;
+            color: #000;
+            border: 2px solid #000;
+            padding: 14px 40px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 50px; 
+            transition: all 0.4s ease;
+            opacity: 0; 
+            transform: translateY(20px); 
+            /* Positioned near the bottom */
+            position: absolute;
+            bottom: 20%;
+        }
+
+        .enter-btn.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .enter-btn:hover {
+            background: #000;
+            color: #fff;
+        }
+
+        /* --- MINIMALIST MUSIC PLAYER (small circular icon) --- */
+        .music-player {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            z-index: 110;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1.5px solid #000;
+            background: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.25s ease, background 0.25s ease;
+        }
+
+        .music-player:hover {
+            transform: scale(1.06);
+        }
+        .music-player:active {
+            transform: scale(0.94);
+        }
+
+        .music-player.playing {
+            background: #000;
+        }
+
+        /* Equalizer bars — shown while playing */
+        .eq {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            height: 16px;
+        }
+        .eq span {
+            display: block;
+            width: 2.5px;
+            border-radius: 2px;
+            background: #000;
+            height: 6px;
+            animation: eq-bounce 0.9s ease-in-out infinite;
+        }
+        .music-player.playing .eq span { background: #fff; }
+        .eq span:nth-child(1) { animation-delay: 0s; }
+        .eq span:nth-child(2) { animation-delay: 0.15s; }
+        .eq span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes eq-bounce {
+            0%, 100% { height: 5px; }
+            50% { height: 15px; }
+        }
+
+        /* Muted glyph — shown while paused */
+        .muted-icon {
+            display: none;
+            font-size: 15px;
+            line-height: 1;
+        }
+
+        .music-player:not(.playing) .eq { display: none; }
+        .music-player:not(.playing) .muted-icon { display: block; }
+        .music-player.playing .muted-icon { display: none; }
+
+        /* --- FOG LAYER (On Top) --- */
+        #fogCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            touch-action: none; 
+            /* Huge blur to create that seamless, smooth foggy appearance */
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px);
+            transition: opacity 1.5s ease-out, backdrop-filter 1.5s ease-out;
+        }
+
+        .evaporated {
+            opacity: 0;
+            backdrop-filter: blur(0px) !important;
+            -webkit-backdrop-filter: blur(0px) !important;
+            pointer-events: none; 
+        }
+
+        /* --- INTRO EXIT ANIMATION --- */
+        .content.content-exit {
+            transition: opacity 0.5s ease, transform 0.5s cubic-bezier(.4,0,.2,1);
+            opacity: 0;
+            transform: scale(0.94) translateY(-8px);
+        }
+
+        /* --- TRANSITION VEIL (iris wipe) --- */
+        .veil {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 100;
+            clip-path: circle(0% at 50% 50%);
+            -webkit-clip-path: circle(0% at 50% 50%);
+            transition: clip-path 0.9s cubic-bezier(.65,0,.35,1), -webkit-clip-path 0.9s cubic-bezier(.65,0,.35,1);
+            pointer-events: none;
+        }
+
+        /* --- RECEPTION SECTION --- */
+        .reception {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.7s ease, transform 0.7s cubic-bezier(.2,.8,.2,1);
+            transform: translateY(16px);
+        }
+        .reception.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .reception-inner {
+            text-align: center;
+            padding: 0 24px;
+        }
+        .reception-eyebrow {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: #999;
+            margin-bottom: 18px;
+        }
+        .reception-title {
+            font-size: clamp(2.6rem, 12vw, 4rem);
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin: 0 0 14px;
+            color: #0a0a0a;
+        }
+        .reception-sub {
+            font-size: 14px;
+            color: #777;
+            max-width: 24rem;
+            margin: 0 auto 42px;
+            line-height: 1.6;
+        }
+        .reception-rooms {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+        .room-chip {
+            background: transparent;
+            border: 1.5px solid #000;
+            color: #000;
+            padding: 11px 26px;
+            font-size: 11px;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background 0.3s ease, color 0.3s ease, transform 0.2s ease;
+        }
+        .room-chip:hover {
+            background: #000;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+<div class="background-container">
+    
+    <!-- Instruction Text -->
+    <div id="instruction">Wipe the screen</div>
+
+    <!-- Content hidden underneath -->
+    <div class="content">
+        <img src="https://www.image2url.com/r2/default/images/1782955559270-18580482-6a25-45d7-9959-2d99e7a02355.png" alt="Madeby North" class="logo">
+        <button class="enter-btn" id="enterBtn">Enter Studio</button>
+    </div>
+
+    <!-- The Fog Layer -->
+    <canvas id="fogCanvas"></canvas>
+
+    <!-- Minimalist Music Player -->
+    <button class="music-player" id="musicToggle" aria-label="Toggle sound">
+        <span class="eq"><span></span><span></span><span></span></span>
+        <span class="muted-icon">🔇</span>
+        <audio id="bgMusic" loop>
+            <source src="https://www.image2url.com/r2/default/audio/1782957139010-44279963-5036-456f-907b-1c0e95821b05.mp3" type="audio/mpeg">
+        </audio>
+    </button>
+
+</div>
+
+<!-- Reception — where Enter Studio lands -->
+<section class="reception" id="reception">
+    <div class="reception-inner">
+        <span class="reception-eyebrow">MADEBY NORTH</span>
+        <h1 class="reception-title">Reception</h1>
+        <p class="reception-sub">You're in. This is where the studio begins.</p>
+        <div class="reception-rooms">
+            <button class="room-chip">Work</button>
+            <button class="room-chip">Sound</button>
+            <button class="room-chip">Studio</button>
+            <button class="room-chip">Contact</button>
+        </div>
+    </div>
+</section>
+
+<!-- Transition veil -->
+<div class="veil" id="veil"></div>
+
+<script>
+    const canvas = document.getElementById('fogCanvas');
+    const ctx = canvas.getContext('2d');
+    const enterBtn = document.getElementById('enterBtn');
+    const instructionText = document.getElementById('instruction');
+    
+    // Music Player Variables
+    const musicToggle = document.getElementById('musicToggle');
+    const bgMusic = document.getElementById('bgMusic');
+    let isPlaying = false;
+
+    let isDrawing = false;
+    let hasStartedWiping = false; 
+    let lastX = 0;
+    let lastY = 0;
+    
+    let wipeCounter = 0;
+    const wipeThreshold = 45; 
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        fillFog();
+    }
+
+    function fillFog() {
+        ctx.globalCompositeOperation = 'source-over'; 
+        // Matches the pure white page background, creating a seamless blend 
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = 55; // Slightly thicker wipe for a smoother reveal
+        ctx.lineCap = 'round'; 
+        ctx.lineJoin = 'round'; 
+    }
+
+    function getCoordinates(event) {
+        if (event.touches && event.touches.length > 0) {
+            return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+        }
+        return { x: event.clientX, y: event.clientY };
+    }
+
+    function startDrawing(e) {
+        isDrawing = true;
+        
+        // Hide the instruction text on the very first touch
+        if (!hasStartedWiping) {
+            instructionText.style.opacity = '0';
+            hasStartedWiping = true;
+        }
+
+        const coords = getCoordinates(e);
+        lastX = coords.x;
+        lastY = coords.y;
+        
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault(); 
+        
+        const coords = getCoordinates(e);
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY); 
+        ctx.lineTo(coords.x, coords.y); 
+        ctx.stroke(); 
+        
+        lastX = coords.x;
+        lastY = coords.y;
+        
+        wipeCounter++;
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+        
+        if (wipeCounter > wipeThreshold) {
+            triggerReveal();
+        }
+    }
+
+    function triggerReveal() {
+        canvas.classList.add('evaporated');
+        
+        setTimeout(() => {
+            enterBtn.classList.add('visible');
+        }, 500); 
+    }
+
+    // Music Player Logic
+    musicToggle.addEventListener('click', () => {
+        if (isPlaying) {
+            bgMusic.pause();
+            musicToggle.classList.remove('playing');
+        } else {
+            bgMusic.play().catch(() => {});
+            musicToggle.classList.add('playing');
+        }
+        isPlaying = !isPlaying;
+    });
+
+    // Mouse Events
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+
+    // Touch Events
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing);
+
+    // Initialize
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // --- ENTER STUDIO: seamless iris-wipe transition ---
+    const veil = document.getElementById('veil');
+    const reception = document.getElementById('reception');
+    const introContent = document.querySelector('.content');
+    const introContainer = document.querySelector('.background-container');
+
+    function setVeilOrigin(x, y) {
+        veil.style.setProperty('--cx', x + 'px');
+        veil.style.setProperty('--cy', y + 'px');
+        veil.style.clipPath = `circle(0% at ${x}px ${y}px)`;
+        veil.style.webkitClipPath = `circle(0% at ${x}px ${y}px)`;
+    }
+
+    enterBtn.addEventListener('click', (e) => {
+        const rect = enterBtn.getBoundingClientRect();
+        const originX = rect.left + rect.width / 2;
+        const originY = rect.top + rect.height / 2;
+        const farthest = Math.hypot(
+            Math.max(originX, window.innerWidth - originX),
+            Math.max(originY, window.innerHeight - originY)
+        );
+
+        // 1. Intro content exits gracefully
+        introContent.classList.add('content-exit');
+
+        // 2. Veil expands from the button, covering the screen
+        setVeilOrigin(originX, originY);
+        // force reflow so the browser registers the starting clip-path before transitioning
+        void veil.offsetWidth;
+        requestAnimationFrame(() => {
+            veil.style.clipPath = `circle(${farthest + 40}px at ${originX}px ${originY}px)`;
+            veil.style.webkitClipPath = `circle(${farthest + 40}px at ${originX}px ${originY}px)`;
+        });
+
+        veil.addEventListener('transitionend', function onCover(ev) {
+            if (ev.propertyName !== 'clip-path') return;
+            veil.removeEventListener('transitionend', onCover);
+
+            // 3. Swap sections while fully covered — invisible to the user
+            introContainer.style.display = 'none';
+            reception.classList.add('visible');
+
+            // 4. Veil retreats from screen center, revealing Reception
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
+            const centerFarthest = Math.hypot(cx, cy);
+            veil.style.clipPath = `circle(${centerFarthest + 40}px at ${cx}px ${cy}px)`;
+            veil.style.webkitClipPath = veil.style.clipPath;
+            void veil.offsetWidth;
+            requestAnimationFrame(() => {
+                veil.style.clipPath = `circle(0% at ${cx}px ${cy}px)`;
+                veil.style.webkitClipPath = `circle(0% at ${cx}px ${cy}px)`;
+            });
+        }, { once: true });
+    });
+
+</script>
+
+</body>
+</html>
